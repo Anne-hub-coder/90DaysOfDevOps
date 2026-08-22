@@ -1,0 +1,312 @@
+# Day 14 – Networking Fundamentals & Hands-on Checks
+
+## Objective
+
+Today I practiced essential Linux networking commands and learned how to troubleshoot connectivity, DNS, HTTP services, and listening ports on an AWS EC2 instance.
+
+I worked with:
+
+- AWS EC2
+- Linux networking
+- TCP/IP basics
+- ICMP (Ping)
+- HTTP/HTTPS
+- DNS
+- SSH
+- Nginx
+
+---
+
+## Networking Concepts
+
+### OSI Model vs TCP/IP Model
+
+| OSI Model | TCP/IP Model |
+|-----------|-------------|
+| Physical | Link |
+| Data Link | Link |
+| Network | Internet |
+| Transport | Transport |
+| Session | Application |
+| Presentation | Application |
+| Application | Application |
+
+### Where Common Protocols Fit
+
+- **IP** → Internet Layer
+- **TCP/UDP** → Transport Layer
+- **HTTP/HTTPS** → Application Layer
+- **DNS** → Application Layer
+
+### Real Example
+
+`curl https://google.com` works through:
+
+Application (HTTP) → Transport (TCP) → Internet (IP)
+
+---
+
+## Task 1 – Check Network Identity
+
+### Command
+
+```bash
+hostname -I
+```
+
+### Output
+
+```text
+172.31.33.72 172.17.0.1
+```
+
+### Observation
+
+- `172.31.33.72` is my EC2 private IP.
+- `172.17.0.1` belongs to Docker's bridge network.
+
+---
+
+## Task 2 – Test Connectivity
+
+### Command
+
+```bash
+ping -c 4 google.com
+```
+
+### Result
+
+```text
+4 packets transmitted, 4 received, 0% packet loss
+Average latency: ~2.97 ms
+```
+
+### Observation
+
+The server successfully reached Google with very low latency and no packet loss.
+
+---
+
+## Task 3 – Trace the Network Path
+
+### Command
+
+```bash
+tracepath google.com
+```
+
+### Observation
+
+- Initial AWS network hops responded successfully.
+- Several later hops showed "no reply", which is common because many routers block ICMP responses.
+- The path MTU settled at **1500 bytes**.
+
+---
+
+## Task 4 – Check Listening Ports
+
+### Command
+
+```bash
+ss -tulpn
+```
+
+### Important Listening Services
+
+| Port | Service |
+|------|---------|
+| 22 | SSH |
+| 80 | Nginx |
+| 53 | Local DNS |
+| 68 | DHCP |
+
+### Observation
+
+- SSH is listening on port **22**.
+- Nginx is listening on port **80**.
+- DNS services are running locally on port **53**.
+
+---
+
+## Task 5 – DNS Resolution
+
+### Command
+
+```bash
+getent hosts google.com
+```
+
+### Output
+
+```text
+2a00:1450:400f:806::200e google.com
+```
+
+### Observation
+
+The system successfully resolved Google's IPv6 address.
+
+---
+
+## Task 6 – HTTP Check
+
+### Command
+
+```bash
+curl -I https://google.com
+```
+
+### Output
+
+```text
+HTTP/2 301
+```
+
+### Observation
+
+Google redirected the request to `www.google.com`, which confirms HTTPS connectivity is working.
+
+---
+
+## Task 7 – Local Web Server Check
+
+### Command
+
+```bash
+curl -I http://localhost
+```
+
+### Output
+
+```text
+HTTP/1.1 200 OK
+Server: nginx/1.28.3 (Ubuntu)
+```
+
+### Observation
+
+My local Nginx server responded successfully with **HTTP 200 OK**.
+
+---
+
+## Mini Port Probe
+
+I verified my local web server using:
+
+```bash
+curl -I http://localhost
+```
+
+### Result
+
+The service was reachable.
+
+If it had failed, my next checks would have been:
+
+- `systemctl status nginx`
+- `ss -tulpn`
+- AWS Security Group rules
+
+---
+
+## Commands Used
+
+```bash
+hostname -I
+```
+
+```bash
+ping -c 4 google.com
+```
+
+```bash
+tracepath google.com
+```
+
+```bash
+ss -tulpn
+```
+
+```bash
+getent hosts google.com
+```
+
+```bash
+curl -I https://google.com
+```
+
+```bash
+curl -I http://localhost
+```
+
+---
+
+## Reflection
+
+### Which command gives the fastest signal?
+
+`ping` gives the quickest indication that network connectivity is working.
+
+### If DNS fails
+
+I would inspect the **Application Layer**, since DNS operates there.
+
+### If HTTP 500 appears
+
+I would first check:
+
+- Nginx service status
+- Nginx error logs
+- Application logs behind Nginx
+
+### Two follow-up checks during an incident
+
+1. `systemctl status nginx`
+2. `ss -tulpn`
+
+---
+
+## What I Learned
+
+- The OSI model and TCP/IP model map closely together.
+- `ping` quickly confirms basic connectivity.
+- `tracepath` helps identify where traffic stops.
+- `ss -tulpn` shows which services are listening on specific ports.
+- `getent hosts` verifies DNS resolution.
+- `curl -I` checks HTTP responses without downloading the webpage.
+
+---
+
+## DevOps Takeaway
+
+Networking is one of the first areas to investigate during production issues. A simple troubleshooting flow is:
+
+1. Check IP address.
+2. Verify connectivity with `ping`.
+3. Trace the route if needed.
+4. Confirm DNS resolution.
+5. Check listening ports.
+6. Test the HTTP service.
+7. Inspect the service status and logs.
+
+This systematic approach helps isolate whether the problem is with networking, DNS, or the application itself.
+
+---
+
+## Evidence
+
+Screenshots collected during this exercise:
+
+- `network-identity.png`
+- `ping-google.png`
+- `tracepath-google.png`
+- `listening-ports.png`
+- `curl-google.png`
+- `curl-localhost.png`
+
+---
+
+## Day 14 Summary
+
+Today I strengthened my networking fundamentals by verifying connectivity, tracing network paths, checking listening ports, testing DNS resolution, and confirming both external and local HTTP services on an AWS EC2 instance.
